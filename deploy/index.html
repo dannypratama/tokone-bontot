@@ -233,12 +233,12 @@
     <!-- FILTER & SEARCH BAR -->
     <div class="bg-brand-card p-3 sm:p-4 rounded-2xl border border-brand-border card-shadow mb-5 sm:mb-6 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
       <div class="relative w-full sm:w-96">
-        <input type="text" id="search-input" oninput="renderApp()" placeholder="Cari nama pelanggan / barang..." class="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-brand-surface rounded-xl border border-brand-border text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/40 transition">
+        <input type="text" id="search-input" oninput="resetAndRender()" placeholder="Cari nama pelanggan / barang..." class="w-full pl-10 pr-4 py-3 sm:py-2.5 bg-brand-surface rounded-xl border border-brand-border text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/40 transition">
         <svg class="w-4 h-4 text-brand-dark/30 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
       </div>
 
       <div class="w-full sm:w-auto">
-        <select id="filter-status" onchange="renderApp()" class="w-full sm:w-auto px-4 py-3 sm:py-2.5 bg-brand-surface rounded-xl border border-brand-border text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/40 font-medium text-brand-dark">
+        <select id="filter-status" onchange="resetAndRender()" class="w-full sm:w-auto px-4 py-3 sm:py-2.5 bg-brand-surface rounded-xl border border-brand-border text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/40 font-medium text-brand-dark">
           <option value="ALL">Semua Status</option>
           <option value="BERJALAN">Berjalan (Belum Lunas)</option>
           <option value="LUNAS">Lunas</option>
@@ -247,7 +247,7 @@
     </div>
 
     <!-- DATA LIST -->
-    <section>
+    <section id="data-section" class="scroll-mt-20">
       <!-- CARD LIST (MOBILE) -->
       <div id="card-list" class="md:hidden space-y-3"></div>
 
@@ -272,6 +272,12 @@
             </tbody>
           </table>
         </div>
+      </div>
+
+      <!-- PAGINATION -->
+      <div id="pagination-container" class="hidden mt-4 bg-brand-card px-4 py-3 rounded-2xl border border-brand-border card-shadow flex flex-col sm:flex-row items-center justify-between gap-3">
+        <p id="pagination-info" class="text-xs text-brand-dark/60 font-medium text-center sm:text-left"></p>
+        <div id="pagination-controls" class="flex flex-wrap items-center justify-center gap-1.5"></div>
       </div>
 
       <!-- EMPTY STATE -->
@@ -683,6 +689,76 @@
       if (_confirmResolver) { _confirmResolver(val); _confirmResolver = null; }
     }
 
+    // --- PAGINATION STATE ---
+    const ITEMS_PER_PAGE = 20;
+    let currentPage = 1;
+
+    function resetAndRender() {
+      currentPage = 1;
+      renderApp();
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      renderApp();
+      const section = document.getElementById('data-section');
+      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function getPageNumbers(current, total) {
+      if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+      const pages = [1];
+      if (current > 3) pages.push('...');
+      const start = Math.max(2, current - 1);
+      const end = Math.min(total - 1, current + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (current < total - 2) pages.push('...');
+      pages.push(total);
+      return pages;
+    }
+
+    function renderPagination(totalItems, totalPages, startIdx, endIdx) {
+      const container = document.getElementById('pagination-container');
+      const infoEl = document.getElementById('pagination-info');
+      const controlsEl = document.getElementById('pagination-controls');
+
+      if (totalItems === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      infoEl.textContent = `Menampilkan ${startIdx + 1}–${endIdx} dari ${totalItems} data (Hal ${currentPage}/${totalPages})`;
+
+      if (totalPages <= 1) {
+        controlsEl.innerHTML = '';
+        controlsEl.classList.add('hidden');
+        return;
+      }
+
+      controlsEl.classList.remove('hidden');
+      const btnBase = 'min-w-[36px] min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-semibold border transition inline-flex items-center justify-center';
+      const btnNormal = `${btnBase} bg-brand-surface border-brand-border text-brand-dark hover:bg-brand-accent/15`;
+      const btnActive = `${btnBase} bg-brand-primary border-brand-primary text-brand-light`;
+      const btnDisabled = `${btnBase} bg-brand-surface/50 border-brand-border/50 text-brand-dark/30 cursor-not-allowed`;
+
+      let html = '';
+      html += `<button type="button" ${currentPage === 1 ? 'disabled' : `onclick="goToPage(${currentPage - 1})"`} class="${currentPage === 1 ? btnDisabled : btnNormal}" aria-label="Halaman sebelumnya">&lsaquo; Prev</button>`;
+
+      getPageNumbers(currentPage, totalPages).forEach(p => {
+        if (p === '...') {
+          html += `<span class="px-1.5 text-xs text-brand-dark/40 select-none">...</span>`;
+        } else if (p === currentPage) {
+          html += `<button type="button" class="${btnActive}" aria-current="page">${p}</button>`;
+        } else {
+          html += `<button type="button" onclick="goToPage(${p})" class="${btnNormal}">${p}</button>`;
+        }
+      });
+
+      html += `<button type="button" ${currentPage === totalPages ? 'disabled' : `onclick="goToPage(${currentPage + 1})"`} class="${currentPage === totalPages ? btnDisabled : btnNormal}" aria-label="Halaman berikutnya">Next &rsaquo;</button>`;
+      controlsEl.innerHTML = html;
+    }
+
     // --- MAIN RENDER FUNCTION ---
     function renderApp() {
       const tbody = document.getElementById('table-body');
@@ -730,11 +806,22 @@
 
       if (filteredData.length === 0) {
         emptyState.classList.remove('hidden');
+        renderPagination(0, 1, 0, 0);
         return;
       }
       emptyState.classList.add('hidden');
 
-      filteredData.forEach(item => {
+      const totalItems = filteredData.length;
+      const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+      if (currentPage > totalPages) currentPage = totalPages;
+      if (currentPage < 1) currentPage = 1;
+      const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+      const endIdx = Math.min(startIdx + ITEMS_PER_PAGE, totalItems);
+      const pageData = filteredData.slice(startIdx, endIdx);
+
+      renderPagination(totalItems, totalPages, startIdx, endIdx);
+
+      pageData.forEach(item => {
         const { totalBayar, sisa, isLunas } = compute(item);
         const cicilanCount = (item.angsuranList || []).length;
         const pct = item.harga > 0 ? Math.min(100, Math.round((totalBayar / item.harga) * 100)) : 0;
@@ -858,6 +945,8 @@
 
       try {
         await window.addDoc(window.kreditCollection, newRecord);
+        currentPage = 1;
+        renderApp();
         closeFormModal();
         showToast('Data kredit berhasil disimpan');
       } catch (err) {
