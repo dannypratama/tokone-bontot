@@ -1,5 +1,5 @@
 /* Service Worker - TOKONE BONTOT (Crafted by Progress Printshop) */
-const CACHE = 'tokobontot-v1';
+const CACHE = 'tokobontot-v2';
 const ASSETS = [
   './',
   './index.html',
